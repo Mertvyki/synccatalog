@@ -57,6 +57,13 @@ class App(tk.Tk):
         for root, _, files in os.walk(self.input_receiver.get()):
             rel_path = os.path.relpath(root, self.input_receiver.get())
             dest_path = os.path.join(self.input_source.get(), rel_path)
+            if not os.path.exists(dest_path):
+                shutil.rmtree(os.path.join(root, rel_path))
+            for file in files:
+                dest_file_path = os.path.join(dest_path, file)
+                if not os.path.exists(dest_file_path):
+                    print(dest_file_path)
+
 
 
 if __name__ == "__main__":
