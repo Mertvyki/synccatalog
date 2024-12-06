@@ -44,7 +44,7 @@ class App(tk.Tk):
         for root, _, files in os.walk(self.input_source.get()):
             rel_path = os.path.relpath(root, self.input_source.get())
             dest_path = os.path.join(self.input_receiver.get(), rel_path)
-            print(dest_path)
+
 
 
 if __name__ == "__main__":
