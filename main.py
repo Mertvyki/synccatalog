@@ -1,5 +1,6 @@
 import hashlib
 import os
+import shutil
 import tkinter as tk
 from tkinter.filedialog import askdirectory
 
@@ -44,7 +45,18 @@ class App(tk.Tk):
         for root, _, files in os.walk(self.input_source.get()):
             rel_path = os.path.relpath(root, self.input_source.get())
             dest_path = os.path.join(self.input_receiver.get(), rel_path)
-
+            if not os.path.exists(dest_path):
+                os.mkdir(dest_path)
+            for file in files:
+                dest_file_path = os.path.join(dest_path, file)
+                source_file_path = os.path.join(root, file)
+                if not os.path.exists(dest_file_path):
+                    shutil.copy2(source_file_path, dest_file_path)
+                elif self.hash_check(source_file_path) != self.hash_check(dest_file_path):
+                    shutil.copy2(source_file_path, dest_file_path)
+        for root, _, files in os.walk(self.input_receiver.get()):
+            rel_path = os.path.relpath(root, self.input_receiver.get())
+            dest_path = os.path.join(self.input_source.get(), rel_path)
 
 
 if __name__ == "__main__":
