@@ -113,11 +113,11 @@ class App(tk.Tk):
     @staticmethod
     def hash_check(file_path) -> str:
         #Нужна для проверки файла на изменение
-        #Создаем объект хэш функции sha256
+        #Создаем объект хэш функции
         hash_func = hashlib.sha256()
         #Открываем файл в режим бинарного чтения
         with open(file_path, "rb") as f:
-            #Делаем цикл и присваиваем переменной 8192 байта файла
+            #Делаем цикл и присваиваем переменной 8192 байта
             while chunk := f.read(8192):
                 #Добавляем к объекту хэш функции данные
                 hash_func.update(chunk)
@@ -127,57 +127,58 @@ class App(tk.Tk):
     def sync_catalog(self):
         source_path: str = self.input_source.get()
         receiver_path: str = self.input_receiver.get()
-        # Делаем цикл по источнику
-        for root, _, files in os.walk(source_path):
-            # Делаем из абсолютного пути относительный, то есть получаем каталоги и их дочерние каталоги
-            rel_path: str = os.path.relpath(root, source_path)
-            # Присоединяем к каталогу приемнику относительный путь
-            dest_path: str = os.path.join(receiver_path, rel_path)
-            # Проверим есть ли в каталоге приемнике, каталоги из каталога источника и существует ли каталог приемник
-            if not os.path.exists(dest_path) and os.path.exists(receiver_path):
-                # Создаем каталоги
-                os.mkdir(dest_path)
-                # Выводим лог о создании каталога
-                self.text_field_insert(f"{time.strftime("%H:%M:%S")} Добавлена папка {rel_path}")
-                # Добавляем в бд запись о создании каталога
-                self.db_con.insert_record(time.strftime("%H:%M:%S"), "Добавлена папка", rel_path)
-            # Цикл по файлам из каталога источника
-            for file in files:
-                # Создаем путь до файла
-                dest_file_path: str = os.path.join(dest_path, file)
-                # Создаем путь до файла в каталоге источнике
-                source_file_path: str = os.path.join(root, file)
-                # Проверяем есть ли файл в каталоге приемнике
-                if not os.path.exists(dest_file_path) and os.path.exists(receiver_path):
-                    # Копируем файлы из источника в приемник
-                    shutil.copy2(source_file_path, dest_file_path)
-                    self.text_field_insert(f"{time.strftime("%H:%M:%S")} Добавлен файл {file}")
-                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Добавлен файл", file)
-                # Если файл уже есть в приемнике, то сравниваем их хэши, если они разные, то файл был изменен
-                elif App.hash_check(source_file_path) != App.hash_check(dest_file_path):
-                    shutil.copy2(source_file_path, dest_file_path)
-                    self.text_field_insert(f"{time.strftime("%H:%M:%S")} Изменен файл {file}")
-                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Изменен файл", file)
-        # Цикл по приемнику для удаления файлов и каталогов
-        for root, _, files in os.walk(receiver_path):
-            rel_path: str = os.path.relpath(root, receiver_path)
-            # Присоединяем к каталогу источнику относительный путь
-            dest_path: str = os.path.join(source_path, rel_path)
-            # Проверяем есть ли каталоги приемника в источнике
-            if not os.path.exists(dest_path) and os.path.exists(source_path):
-                # Если нет такого каталога, удаляем его в источнике
-                shutil.rmtree(os.path.join(root))
-                self.text_field_insert(f"{time.strftime("%H:%M:%S")} Удалена папка {rel_path}")
-                self.db_con.insert_record(time.strftime("%H:%M:%S"), "Удалена папка", rel_path)
-            for file in files:
-                dest_file_path: str = os.path.join(dest_path, file)
-                source_file_path: str = os.path.join(root, file)
-                # Проверяем есть ли файл из приемника, в источнике и существует ли каталог в котором находится файл
-                if not os.path.exists(dest_file_path) and os.path.exists(dest_path):
-                    # Удаляем файл
-                    os.remove(source_file_path)
-                    self.text_field_insert(f"{time.strftime("%H:%M:%S")} Удален файл {file}")
-                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Удален файл", file)
+        if os.path.exists(receiver_path) and os.path.exists(source_path):
+            # Делаем цикл по источнику
+            for root, _, files in os.walk(source_path):
+                # Делаем из абсолютного пути относительный, то есть получаем каталоги и их дочерние каталоги
+                rel_path: str = os.path.relpath(root, source_path)
+                # Присоединяем к каталогу приемнику относительный путь
+                dest_path: str = os.path.join(receiver_path, rel_path)
+                # Проверим есть ли в каталоге приемнике, каталоги из каталога источника
+                if not os.path.exists(dest_path):
+                    # Создаем каталоги
+                    os.mkdir(dest_path)
+                    # Выводим лог о создании каталога
+                    self.text_field_insert(f"{time.strftime("%H:%M:%S")} Добавлена папка {rel_path}")
+                    # Добавляем в бд запись о создании каталога
+                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Добавлена папка", rel_path)
+                # Цикл по файлам из каталога источника
+                for file in files:
+                    # Создаем путь до файла
+                    dest_file_path: str = os.path.join(dest_path, file)
+                    # Создаем путь до файла в каталоге источнике
+                    source_file_path: str = os.path.join(root, file)
+                    # Проверяем есть ли файл в каталоге приемнике
+                    if not os.path.exists(dest_file_path):
+                        # Копируем файлы из источника в приемник
+                        shutil.copy2(source_file_path, dest_file_path)
+                        self.text_field_insert(f"{time.strftime("%H:%M:%S")} Добавлен файл {file}")
+                        self.db_con.insert_record(time.strftime("%H:%M:%S"), "Добавлен файл", file)
+                    # Если файл уже есть в приемнике, то сравниваем их хэши, если они разные, то файл был изменен
+                    elif App.hash_check(source_file_path) != App.hash_check(dest_file_path):
+                        shutil.copy2(source_file_path, dest_file_path)
+                        self.text_field_insert(f"{time.strftime("%H:%M:%S")} Изменен файл {file}")
+                        self.db_con.insert_record(time.strftime("%H:%M:%S"), "Изменен файл", file)
+            # Цикл по приемнику для удаления файлов и каталогов
+            for root, _, files in os.walk(receiver_path):
+                rel_path: str = os.path.relpath(root, receiver_path)
+                # Присоединяем к каталогу источнику относительный путь
+                dest_path: str = os.path.join(source_path, rel_path)
+                # Проверяем есть ли каталоги приемника в источнике
+                if not os.path.exists(dest_path):
+                    # Если нет такого каталога, удаляем его в источнике
+                    shutil.rmtree(os.path.join(root))
+                    self.text_field_insert(f"{time.strftime("%H:%M:%S")} Удалена папка {rel_path}")
+                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Удалена папка", rel_path)
+                for file in files:
+                    dest_file_path: str = os.path.join(dest_path, file)
+                    source_file_path: str = os.path.join(root, file)
+                    # Проверяем есть ли файл из приемника, в источнике и существует ли каталог в котором находится файл
+                    if not os.path.exists(dest_file_path) and os.path.exists(dest_path):
+                        # Удаляем файл
+                        os.remove(source_file_path)
+                        self.text_field_insert(f"{time.strftime("%H:%M:%S")} Удален файл {file}")
+                        self.db_con.insert_record(time.strftime("%H:%M:%S"), "Удален файл", file)
 
 
 
