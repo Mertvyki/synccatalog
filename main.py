@@ -7,6 +7,39 @@ import sqlite3
 from tkinter.filedialog import askdirectory
 
 
+class DbConnection:
+    def __init__(self):
+        self.cursor = None
+        self.conn = None
+        self.connect_db()
+        self.create_table()
+
+    def connect_db(self):
+        # подключаемся к бд
+        self.conn = sqlite3.connect("logs.db")
+        self.cursor = self.conn.cursor()
+
+    def create_table(self):
+        # создаем таблицу в бд и сохраняем изменения
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS file_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        time DATETIME NOT NULL,
+        message TEXT NOT NULL,
+        filename TEXT NOT NULL
+        )
+        ''')
+        self.conn.commit()
+
+    def insert_record(self, time_log, message, filename):
+        # вставляем значение в бд
+        self.cursor.execute("INSERT INTO file_logs (time, message, filename) VALUES (?, ?, ?)", (time_log, message, filename))
+        self.conn.commit()
+
+    def close_db(self):
+        # закрываем подключение к бд
+        self.cursor.close()
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -17,13 +50,13 @@ class App(tk.Tk):
         self.button_receiver = None
         self.button_source = None
         self.input_receiver = None
-        self.cursor = None
-        self.conn = None
 
-        #Вызываем функции отрисовки гуи, присоединения бд, и создание таблицы если ее нет
+        #Вызываем функции отрисовки гуи и вызываем класс DbConnection
         self.draw_gui()
-        self.connect_db()
-        self.create_table()
+        self.db_con = DbConnection()
+
+    def close_db(self):
+        self.db_con.close_db()
 
     def draw_gui(self):
         #Задаем размеры формы, запрещаем ей менять размеры, даем название форме
@@ -52,32 +85,6 @@ class App(tk.Tk):
 
         self.text_filed = tk.Text(height=15, width=40, state=tk.DISABLED)
         self.text_filed.grid(row=3, column=0, padx=10, pady=10, columnspan=2)
-    
-    def connect_db(self):
-        # подключаемся к бд
-        self.conn = sqlite3.connect("logs.db")
-        self.cursor = self.conn.cursor()
-
-    def create_table(self):
-        # создаем таблицу в бд и сохраняем изменения
-        self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS file_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        time DATETIME NOT NULL,
-        message TEXT NOT NULL,
-        filename TEXT NOT NULL
-        )
-        ''')
-        self.conn.commit()
-
-    def insert_record(self, time, message, filename):
-        # вставляем значение в бд
-        self.cursor.execute("INSERT INTO file_logs (time, message, filename) VALUES (?, ?, ?)", (time, message, filename))
-        self.conn.commit()
-
-    def close_db(self):
-        # закрываем подключение к бд
-        self.cursor.close()
 
     def browse_source(self, entry):
         # спрашиваем директорию
@@ -128,7 +135,7 @@ class App(tk.Tk):
                 # Выводим лог о создании каталога
                 self.text_field_insert(f"{time.strftime("%H:%M:%S")} Добавлена папка {rel_path}")
                 # Добавляем в бд запись о создании каталога
-                self.insert_record(time.strftime("%H:%M:%S"), "Добавлена папка", rel_path)
+                self.db_con.insert_record(time.strftime("%H:%M:%S"), "Добавлена папка", rel_path)
             # Цикл по файлам из каталога исчтоника
             for file in files:
                 # Создаем путь до файла
@@ -140,12 +147,12 @@ class App(tk.Tk):
                     # Копируем файлы из источника в приемник
                     shutil.copy2(source_file_path, dest_file_path)
                     self.text_field_insert(f"{time.strftime("%H:%M:%S")} Добавлен файл {file}")
-                    self.insert_record(time.strftime("%H:%M:%S"), "Добавлен файл", file)
+                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Добавлен файл", file)
                 # Если файл уже есть в приемнике, то сравниваем их хэши, если они разные то файл был изменен
                 elif self.hash_check(source_file_path) != self.hash_check(dest_file_path):
                     shutil.copy2(source_file_path, dest_file_path)
                     self.text_field_insert(f"{time.strftime("%H:%M:%S")} Изменен файл {file}")
-                    self.insert_record(time.strftime("%H:%M:%S"), "Изменен файл", file)
+                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Изменен файл", file)
         # Цикл по приемнику для удаления файлов и каталогов
         for root, _, files in os.walk(self.input_receiver.get()):
             rel_path = os.path.relpath(root, self.input_receiver.get())
@@ -156,7 +163,7 @@ class App(tk.Tk):
                 # Если нет такого каталога, удаляем его в источнике
                 shutil.rmtree(os.path.join(root))
                 self.text_field_insert(f"{time.strftime("%H:%M:%S")} Удалена папка {rel_path}")
-                self.insert_record(time.strftime("%H:%M:%S"), "Удалена папка", rel_path)
+                self.db_con.insert_record(time.strftime("%H:%M:%S"), "Удалена папка", rel_path)
             for file in files:
                 dest_file_path = os.path.join(dest_path, file)
                 source_file_path = os.path.join(root, file)
@@ -165,7 +172,7 @@ class App(tk.Tk):
                     # Удаляем файл
                     os.remove(source_file_path)
                     self.text_field_insert(f"{time.strftime("%H:%M:%S")} Удален файл {file}")
-                    self.insert_record(time.strftime("%H:%M:%S"), "Удален файл", file)
+                    self.db_con.insert_record(time.strftime("%H:%M:%S"), "Удален файл", file)
 
 
 
